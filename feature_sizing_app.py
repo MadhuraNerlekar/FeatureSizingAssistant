@@ -588,7 +588,7 @@ def run_streamlit_app():
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
         }
         .info-trigger:hover .info-popover { display: block; }
-        .block-container { padding-top: 0.5rem; }
+        .block-container { padding-top: 2rem; }
         .stButton>button {
             background: linear-gradient(120deg, #4338ca, #2563eb);
             color: #ffffff;
@@ -606,9 +606,9 @@ def run_streamlit_app():
     # --- Header ---
     st.markdown(
         """
-        <div class="ai-card" style="margin-bottom: 8px;">
-            <h3 style="margin: 4px 0 2px 0;">Feature Sizing Assistant</h3>
-            <div class="muted" style="font-size: 14px;">AI-assisted effort estimation toolfor Business Development teams</div>
+        <div class="ai-card" style="margin-top: 8px; margin-bottom: 8px;">
+            <h3 style="margin: 8px 0 4px 0;">Feature Sizing Assistant</h3>
+            <div class="muted" style="font-size: 14px; margin-bottom: 4px;">AI-assisted effort estimation toolfor Business Development teams</div>
         </div>
         """,
         unsafe_allow_html=True,
