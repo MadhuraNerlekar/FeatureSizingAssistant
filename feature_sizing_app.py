@@ -579,7 +579,7 @@ def run_streamlit_app():
         """
         <div class="ai-card" style="margin-bottom: 8px;">
             <h3 style="margin: 4px 0 2px 0;">Feature Sizing Assistant</h3>
-            <div class="muted" style="font-size: 14px;">AI-assisted effort calibration for Business Development teams</div>
+            <div class="muted" style="font-size: 14px;">AI-assisted effort estimation toolfor Business Development teams</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -686,8 +686,9 @@ def run_streamlit_app():
             """
             <div class="panel">
             <strong>What it does:</strong><br>
-            This tool helps Business Development teams create realistic effort estimations by using a rules-driven Excel framework instead of static values.<br><br>
+            This tool helps Business Development teams create realistic effort estimations for any complex features quickly.<br><br>
             <strong>How it works:</strong><br>
+            • Tool breaks down the feature into modules, screens and one line requirements.<br>
             • Excel does not contain static, hard-coded values.<br>
             • All estimates are calculated dynamically using rules and complexity multipliers.<br>
             • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
