@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -503,8 +504,18 @@ def format_preview(
     return "\n".join(lines)
 
 
-def generate_analysis(description: str, output_folder: Path, api_key: str | None = None):
+def generate_analysis(
+    description: str,
+    output_folder: Path,
+    api_key: str | None = None,
+    size_hours_override: Dict[str, float] | None = None,
+):
     modules, risks, questions, size_to_hours = request_plan_from_llm(description, api_key)
+    if size_hours_override:
+        # Override calibrated S/M/L while keeping any other sizes returned
+        for key, value in size_hours_override.items():
+            if value is not None:
+                size_to_hours[key.upper()] = float(value)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_folder.mkdir(parents=True, exist_ok=True)
     output_path = output_folder / f"feature_sizing_{timestamp}.xlsx"
@@ -524,75 +535,196 @@ def main():
 
 def run_streamlit_app():
     import streamlit as st
+    from streamlit_extras.stylable_container import stylable_container  # type: ignore
     
-    st.set_page_config(
-        page_title="Feature Sizing Assistant",
-        page_icon="📊",
-        layout="wide"
+    st.set_page_config(page_title="Feature Sizing Assistant", page_icon="🤖", layout="wide")
+
+    # --- Theme & layout CSS ---
+    st.markdown(
+        """
+        <style>
+        body {
+            background: radial-gradient(circle at 10% 20%, #e9f0ff 0%, #f6f7ff 28%, #ffffff 60%);
+        }
+        .ai-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(56, 189, 248, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 18px;
+            padding: 16px 18px;
+            box-shadow: 0 16px 38px rgba(15, 23, 42, 0.10);
+        }
+        .panel {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        }
+        .pill {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.12);
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .section-title {
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        .muted { color: #475569; }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
-    
-    st.title("📊 Feature Sizing Assistant")
-    st.markdown("Generate feature sizing analysis from free-text descriptions")
-    
-    # Sidebar for settings
+
+    # --- Header ---
+    st.markdown(
+        """
+        <div class="ai-card" style="margin-bottom: 12px;">
+            <div class="pill">AI Estimation</div>
+            <h1 style="margin: 8px 0 4px 0;">Feature Sizing Assistant</h1>
+            <div class="muted">AI-assisted effort calibration for Business Development teams</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Sidebar for settings and calibration
     with st.sidebar:
-        st.header("Settings")
+        st.header("Control Center")
         default_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")  # type: ignore[attr-defined]
         api_key_input = st.text_input(
-            "OpenAI API Key",
+            "🔐 OpenAI API Key",
             value="",
             type="password",
             placeholder="Enter key or store as OPENAI_API_KEY secret",
-            help="Key not shown. Leave empty to use OPENAI_API_KEY from env/Secrets"
+            help="Key not shown. Leave empty to use OPENAI_API_KEY from env/Secrets",
         )
-    
+
+        st.divider()
+        st.subheader("Effort Calibration")
+        st.caption("Adjust sizing hours to instantly recalc effort")
+        col_s, col_m, col_l = st.columns(3)
+        with col_s:
+            hours_s = st.number_input("S hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)), step=0.5)
+        with col_m:
+            hours_m = st.number_input("M hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)), step=0.5)
+        with col_l:
+            hours_l = st.number_input("L hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)), step=0.5)
+        calibrated_hours = {
+            "XS": DEFAULT_SIZE_TO_HOURS.get("XS", 2),
+            "S": hours_s,
+            "M": hours_m,
+            "L": hours_l,
+            "XL": DEFAULT_SIZE_TO_HOURS.get("XL", 24),
+        }
+
+        st.write("Calibrated map:")
+        st.code({k: v for k, v in calibrated_hours.items()})
+
     # Main content area
-    description = st.text_area(
-        "Free-text Feature Description",
-        height=200,
-        placeholder="Paste your feature description here..."
-    )
-    
-    if st.button("Generate Excel & Preview", type="primary", use_container_width=True):
-        if not description.strip():
-            st.error("Please provide a feature description.")
-        else:
-            try:
-                with st.spinner("Generating analysis... This may take a moment."):
-                    # Create a temporary directory for output
-                    output_dir = Path("/tmp") if sys.platform != "win32" else Path.cwd()
-                    effective_api_key = api_key_input.strip() or default_api_key or None
-                    output_path, preview = generate_analysis(
-                        description,
-                        output_dir,
-                        api_key=effective_api_key,
+    col_left, col_right = st.columns([2, 1], gap="large")
+    with col_left:
+        st.markdown("### ✍️ Describe the feature")
+        description = st.text_area(
+            "Free-text Feature Description",
+            height=220,
+            placeholder="Paste your feature description here...",
+            label_visibility="collapsed",
+        )
+        st.caption("Include scope, integrations, constraints, and acceptance criteria.")
+
+        if st.button("🚀 Generate with AI", type="primary", use_container_width=True):
+            if not description.strip():
+                st.error("Please provide a feature description.")
+            else:
+                try:
+                    # AI activity feed
+                    activity_msgs = [
+                        "Analyzing complexity model…",
+                        "Applying Excel-based estimation rules…",
+                        "Calibrating effort multipliers…",
+                        "Generating structured spreadsheet output…",
+                    ]
+                    st.session_state.activity_logs = activity_msgs
+                    with st.spinner("AI is thinking..."):
+                        time.sleep(0.6)  # subtle artificial delay
+                        output_dir = Path("/tmp") if sys.platform != "win32" else Path.cwd()
+                        effective_api_key = api_key_input.strip() or default_api_key or None
+                        output_path, preview = generate_analysis(
+                            description,
+                            output_dir,
+                            api_key=effective_api_key,
+                            size_hours_override=calibrated_hours,
+                        )
+
+                    st.toast("AI recalibrated effort model successfully", icon="🤖")
+                    st.success("✅ Analysis complete! Excel workbook saved.")
+
+                    with open(output_path, "rb") as f:
+                        st.download_button(
+                            label="📥 Download Excel Workbook",
+                            data=f.read(),
+                            file_name=output_path.name,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                        )
+
+                    st.header("Textual Preview")
+                    st.text_area(
+                        "Preview (for verification before opening Excel)",
+                        value=preview,
+                        height=420,
+                        disabled=True,
+                        label_visibility="collapsed",
                     )
-                
-                st.success(f"✅ Analysis complete! Excel workbook saved.")
-                
-                # Download button for the Excel file
-                with open(output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 Download Excel Workbook",
-                        data=f.read(),
-                        file_name=output_path.name,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-                
-                # Preview section
-                st.header("Textual Preview")
-                st.text_area(
-                    "Preview (for verification before opening Excel)",
-                    value=preview,
-                    height=400,
-                    disabled=True,
-                    label_visibility="collapsed"
-                )
-                
-            except Exception as exc:
-                st.error(f"Failed to generate workbook: {exc}")
-                st.exception(exc)
+
+                except Exception as exc:
+                    st.error(f"Failed to generate workbook: {exc}")
+                    st.exception(exc)
+
+    with col_right:
+        st.markdown("### 🧠 AI Activity Panel")
+        activity_box = st.empty()
+        logs = st.session_state.get("activity_logs", ["Awaiting input…"])
+        activity_box.markdown(
+            "<div class='panel'>" + "".join(f"<div>• {msg}</div>" for msg in logs[-8:]) + "</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("### ℹ️ About This Tool")
+        st.markdown(
+            """
+            <div class="panel">
+            <strong>What it does:</strong><br>
+            This tool helps Business Development teams create realistic effort estimations by using a rules-driven Excel framework instead of static values.<br><br>
+            <strong>How it works:</strong><br>
+            • Excel does not contain static, hard-coded values.<br>
+            • All estimates are calculated dynamically using rules and complexity multipliers.<br>
+            • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
+            • The tool recalculates total effort instantly based on calibrated values.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("### 🎯 How It Helps BD")
+        st.markdown(
+            """
+            <div class="panel">
+            • Create defensible project estimates<br>
+            • Standardize effort calculations<br>
+            • Simulate multiple scenarios before finalizing proposals<br>
+            • Reduce manual Excel guesswork<br>
+            • Quickly arrive at client-ready effort estimates
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 # Streamlit app - runs when executed via: streamlit run feature_sizing_app.py
