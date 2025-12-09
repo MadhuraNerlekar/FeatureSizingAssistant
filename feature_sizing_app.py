@@ -535,7 +535,6 @@ def main():
 
 def run_streamlit_app():
     import streamlit as st
-    from streamlit_extras.stylable_container import stylable_container  # type: ignore
     
     st.set_page_config(page_title="Feature Sizing Assistant", page_icon="🤖", layout="wide")
 
@@ -593,19 +592,12 @@ def run_streamlit_app():
         unsafe_allow_html=True,
     )
 
+    # Default API key from environment/Secrets (no input shown)
+    default_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")  # type: ignore[attr-defined]
+
     # Sidebar for settings and calibration
     with st.sidebar:
         st.header("Control Center")
-        default_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")  # type: ignore[attr-defined]
-        api_key_input = st.text_input(
-            "🔐 OpenAI API Key",
-            value="",
-            type="password",
-            placeholder="Enter key or store as OPENAI_API_KEY secret",
-            help="Key not shown. Leave empty to use OPENAI_API_KEY from env/Secrets",
-        )
-
-        st.divider()
         st.subheader("Effort Calibration")
         st.caption("Adjust sizing hours to instantly recalc effort")
         col_s, col_m, col_l = st.columns(3)
@@ -654,7 +646,7 @@ def run_streamlit_app():
                     with st.spinner("AI is thinking..."):
                         time.sleep(0.6)  # subtle artificial delay
                         output_dir = Path("/tmp") if sys.platform != "win32" else Path.cwd()
-                        effective_api_key = api_key_input.strip() or default_api_key or None
+                        effective_api_key = default_api_key or None
                         output_path, preview = generate_analysis(
                             description,
                             output_dir,
