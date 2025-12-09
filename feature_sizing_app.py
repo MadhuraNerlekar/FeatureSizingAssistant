@@ -683,9 +683,9 @@ def run_streamlit_app():
     )
     st.caption("Include scope, integrations, constraints, and acceptance criteria.")
 
-    # Center-aligned button (shorter)
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-    with col_btn2:
+    # Left-aligned button (shorter)
+    col_btn_left, col_btn_right = st.columns([1, 5])
+    with col_btn_left:
         if st.button("🚀 Get Estimates", type="primary", use_container_width=True):
             if not description.strip():
                 st.error("Please provide a feature description.")
