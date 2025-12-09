@@ -11,9 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
-
 from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
@@ -516,100 +513,97 @@ def main():
     print(f"\nExcel workbook saved to: {output_path.resolve()}\n")
 
 
-def run_gui():
-    root = tk.Tk()
-    root.title("Feature Sizing Assistant")
-    root.geometry("900x700")
-
-    output_dir = tk.StringVar(value=str(Path.cwd()))
-    api_key_var = tk.StringVar(value=os.getenv("OPENAI_API_KEY", ""))
-
-    def choose_output_dir():
-        directory = filedialog.askdirectory(initialdir=output_dir.get() or str(Path.cwd()))
-        if directory:
-            output_dir.set(directory)
-
-    def generate():
-        text = description_text.get("1.0", tk.END).strip()
-        if not text:
-            messagebox.showerror("Missing description", "Please paste a feature description first.")
-            return
-
-        try:
-            out_path, preview = generate_analysis(
-                text,
-                Path(output_dir.get() or Path.cwd()),
-                api_key=api_key_var.get().strip() or None,
-            )
-
-            preview_text.configure(state="normal")
-            preview_text.delete("1.0", tk.END)
-            preview_text.insert(tk.END, preview)
-            preview_text.configure(state="disabled")
-
-            status_var.set(f"Excel workbook saved to: {out_path}")
-        except Exception as exc:  # pragma: no cover - UI safeguard
-            messagebox.showerror("Error", f"Failed to generate workbook:\n{exc}")
-
-    def open_output_folder():
-        try:
-            path = Path(output_dir.get() or Path.cwd())
-            if sys.platform.startswith("win"):
-                os.startfile(str(path))  # type: ignore[attr-defined]
-            elif sys.platform == "darwin":
-                subprocess.call(["open", str(path)])
-            else:
-                subprocess.call(["xdg-open", str(path)])
-        except Exception as exc:  # pragma: no cover - UI safeguard
-            messagebox.showerror("Error", f"Could not open folder:\n{exc}")
-
-    # Layout
-    top_frame = tk.Frame(root)
-    top_frame.pack(fill="x", padx=10, pady=10)
-
-    tk.Label(top_frame, text="Free-text Feature Description:").pack(anchor="w")
-    description_text = scrolledtext.ScrolledText(root, height=10, wrap=tk.WORD)
-    description_text.pack(fill="both", expand=False, padx=10)
-
-    controls_frame = tk.Frame(root)
-    controls_frame.pack(fill="x", padx=10, pady=8)
-
-    tk.Label(controls_frame, text="Output folder:").grid(row=0, column=0, sticky="w")
-    tk.Entry(controls_frame, textvariable=output_dir, width=50).grid(
-        row=0, column=1, sticky="we", padx=(5, 5)
+def run_streamlit_app():
+    import streamlit as st
+    
+    st.set_page_config(
+        page_title="Feature Sizing Assistant",
+        page_icon="📊",
+        layout="wide"
     )
-    tk.Button(controls_frame, text="Browse…", command=choose_output_dir).grid(
-        row=0, column=2, padx=(0, 5)
+    
+    st.title("📊 Feature Sizing Assistant")
+    st.markdown("Generate feature sizing analysis from free-text descriptions")
+    
+    # Sidebar for settings
+    with st.sidebar:
+        st.header("Settings")
+        api_key = st.text_input(
+            "OpenAI API Key",
+            value=os.getenv("OPENAI_API_KEY", ""),
+            type="password",
+            help="Leave empty to use OPENAI_API_KEY environment variable"
+        )
+    
+    # Main content area
+    description = st.text_area(
+        "Free-text Feature Description",
+        height=200,
+        placeholder="Paste your feature description here..."
     )
-    tk.Label(controls_frame, text="OpenAI API Key (optional):").grid(row=1, column=0, sticky="w")
-    tk.Entry(controls_frame, textvariable=api_key_var, show="*", width=50).grid(
-        row=1, column=1, sticky="we", padx=(5, 5)
-    )
-    tk.Button(controls_frame, text="Generate Excel & Preview", command=generate).grid(
-        row=0, column=3, rowspan=2, padx=(5, 0)
-    )
-    tk.Button(controls_frame, text="Open Folder", command=open_output_folder).grid(
-        row=0, column=4, rowspan=2, padx=(5, 0)
-    )
-    controls_frame.columnconfigure(1, weight=1)
+    
+    if st.button("Generate Excel & Preview", type="primary", use_container_width=True):
+        if not description.strip():
+            st.error("Please provide a feature description.")
+        else:
+            try:
+                with st.spinner("Generating analysis... This may take a moment."):
+                    # Create a temporary directory for output
+                    output_dir = Path("/tmp") if sys.platform != "win32" else Path.cwd()
+                    output_path, preview = generate_analysis(
+                        description,
+                        output_dir,
+                        api_key=api_key.strip() or None,
+                    )
+                
+                st.success(f"✅ Analysis complete! Excel workbook saved.")
+                
+                # Download button for the Excel file
+                with open(output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 Download Excel Workbook",
+                        data=f.read(),
+                        file_name=output_path.name,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                
+                # Preview section
+                st.header("Textual Preview")
+                st.text_area(
+                    "Preview (for verification before opening Excel)",
+                    value=preview,
+                    height=400,
+                    disabled=True,
+                    label_visibility="collapsed"
+                )
+                
+            except Exception as exc:
+                st.error(f"Failed to generate workbook: {exc}")
+                st.exception(exc)
 
-    tk.Label(root, text="Textual Preview (for verification before opening Excel):").pack(
-        anchor="w", padx=10
-    )
-    preview_text = scrolledtext.ScrolledText(root, height=18, wrap=tk.WORD, state="disabled")
-    preview_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-    status_var = tk.StringVar(value="Ready.")
-    status_bar = tk.Label(root, textvariable=status_var, anchor="w")
-    status_bar.pack(fill="x", side="bottom")
-
-    root.mainloop()
-
+# Streamlit app - runs when executed via: streamlit run feature_sizing_app.py
+try:
+    import streamlit as st
+    # Only run if streamlit is available (when deployed/run via streamlit)
+    # This will execute when Streamlit imports this module
+    run_streamlit_app()
+except ImportError:
+    # Streamlit not available - will use CLI mode instead
+    pass
 
 if __name__ == "__main__":
-    # Default to GUI; allow CLI mode via: python feature_sizing_app.py --cli
+    # For CLI: python feature_sizing_app.py --cli
     if len(sys.argv) > 1 and sys.argv[1] == "--cli":
         main()
     else:
-        run_gui()
+        # Check if streamlit is available
+        try:
+            import streamlit
+            print("Streamlit is available. Run with: streamlit run feature_sizing_app.py")
+            print("Or use CLI mode: python feature_sizing_app.py --cli")
+        except ImportError:
+            # Fall back to CLI if streamlit not available
+            main()
 
