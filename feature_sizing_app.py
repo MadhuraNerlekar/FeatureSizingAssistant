@@ -543,38 +543,32 @@ def run_streamlit_app():
         """
         <style>
         body {
-            background: radial-gradient(circle at 10% 20%, #e9f0ff 0%, #f6f7ff 28%, #ffffff 60%);
+            background: radial-gradient(circle at 10% 20%, #eef2ff 0%, #f7f9ff 24%, #ffffff 55%);
         }
         .ai-card {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(56, 189, 248, 0.1));
-            border: 1px solid rgba(99, 102, 241, 0.25);
-            border-radius: 18px;
-            padding: 16px 18px;
-            box-shadow: 0 16px 38px rgba(15, 23, 42, 0.10);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(56, 189, 248, 0.08));
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
         .panel {
             background: #ffffff;
-            border-radius: 16px;
-            padding: 16px;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-        }
-        .pill {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: rgba(56, 189, 248, 0.12);
-            color: #0f172a;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
-        }
-        .section-title {
-            font-weight: 700;
-            font-size: 18px;
-            margin-bottom: 6px;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
         }
         .muted { color: #475569; }
+        .stButton>button {
+            background: linear-gradient(120deg, #4338ca, #2563eb);
+            color: #ffffff;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+        .stButton>button:hover { opacity: 0.95; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -583,10 +577,9 @@ def run_streamlit_app():
     # --- Header ---
     st.markdown(
         """
-        <div class="ai-card" style="margin-bottom: 12px;">
-            <div class="pill">AI Estimation</div>
-            <h1 style="margin: 8px 0 4px 0;">Feature Sizing Assistant</h1>
-            <div class="muted">AI-assisted effort calibration for Business Development teams</div>
+        <div class="ai-card" style="margin-bottom: 8px;">
+            <h3 style="margin: 4px 0 2px 0;">Feature Sizing Assistant</h3>
+            <div class="muted" style="font-size: 14px;">AI-assisted effort calibration for Business Development teams</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -619,18 +612,18 @@ def run_streamlit_app():
         st.code({k: v for k, v in calibrated_hours.items()})
 
     # Main content area
-    col_left, col_right = st.columns([2, 1], gap="large")
+    col_left, col_right = st.columns([2, 1], gap="medium")
     with col_left:
         st.markdown("### ✍️ Describe the feature")
         description = st.text_area(
             "Free-text Feature Description",
-            height=220,
+            height=180,
             placeholder="Paste your feature description here...",
             label_visibility="collapsed",
         )
         st.caption("Include scope, integrations, constraints, and acceptance criteria.")
 
-        if st.button("🚀 Generate with AI", type="primary", use_container_width=True):
+        if st.button("🚀 Get Estimates", type="primary", use_container_width=True):
             if not description.strip():
                 st.error("Please provide a feature description.")
             else:
@@ -666,11 +659,11 @@ def run_streamlit_app():
                             use_container_width=True,
                         )
 
-                    st.header("Textual Preview")
+                    st.subheader("Textual Preview")
                     st.text_area(
                         "Preview (for verification before opening Excel)",
                         value=preview,
-                        height=420,
+                        height=360,
                         disabled=True,
                         label_visibility="collapsed",
                     )
@@ -680,13 +673,13 @@ def run_streamlit_app():
                     st.exception(exc)
 
     with col_right:
-        st.markdown("### 🧠 AI Activity Panel")
         activity_box = st.empty()
-        logs = st.session_state.get("activity_logs", ["Awaiting input…"])
-        activity_box.markdown(
-            "<div class='panel'>" + "".join(f"<div>• {msg}</div>" for msg in logs[-8:]) + "</div>",
-            unsafe_allow_html=True,
-        )
+        logs = st.session_state.get("activity_logs", [])
+        if logs:
+            activity_box.markdown(
+                "<div class='panel'>" + "".join(f"<div>• {msg}</div>" for msg in logs[-8:]) + "</div>",
+                unsafe_allow_html=True,
+            )
 
         st.markdown("### ℹ️ About This Tool")
         st.markdown(
