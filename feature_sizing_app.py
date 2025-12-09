@@ -619,32 +619,10 @@ def run_streamlit_app():
 
     # Sidebar for settings and calibration
     with st.sidebar:
-        st.header("Control Center")
-        st.subheader("Effort Calibration")
-        st.caption("Adjust sizing hours to instantly recalc effort")
-        col_s, col_m, col_l = st.columns(3)
-        with col_s:
-            hours_s = st.number_input("S hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)), step=0.5)
-        with col_m:
-            hours_m = st.number_input("M hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)), step=0.5)
-        with col_l:
-            hours_l = st.number_input("L hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)), step=0.5)
-        calibrated_hours = {
-            "XS": DEFAULT_SIZE_TO_HOURS.get("XS", 2),
-            "S": hours_s,
-            "M": hours_m,
-            "L": hours_l,
-            "XL": DEFAULT_SIZE_TO_HOURS.get("XL", 24),
-        }
-
-        st.write("Calibrated map:")
-        st.code({k: v for k, v in calibrated_hours.items()})
-
-        # Info icon in sidebar
-        st.markdown("---")
+        # Info icon at the top of sidebar
         st.markdown(
             """
-            <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0;">
+            <div style="display: flex; align-items: center; gap: 10px; margin: 0 0 16px 0;">
                 <div class="info-trigger">
                     <div class="info-icon">ℹ️</div>
                     <div class="info-popover">
@@ -672,6 +650,27 @@ def run_streamlit_app():
             """,
             unsafe_allow_html=True,
         )
+        
+        st.header("Control Center")
+        st.subheader("Effort Calibration")
+        st.caption("Adjust sizing hours to instantly recalc effort")
+        col_s, col_m, col_l = st.columns(3)
+        with col_s:
+            hours_s = st.number_input("S hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)), step=0.5)
+        with col_m:
+            hours_m = st.number_input("M hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)), step=0.5)
+        with col_l:
+            hours_l = st.number_input("L hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)), step=0.5)
+        calibrated_hours = {
+            "XS": DEFAULT_SIZE_TO_HOURS.get("XS", 2),
+            "S": hours_s,
+            "M": hours_m,
+            "L": hours_l,
+            "XL": DEFAULT_SIZE_TO_HOURS.get("XL", 24),
+        }
+
+        st.write("Calibrated map:")
+        st.code({k: v for k, v in calibrated_hours.items()})
 
     # Main content area - full width
     st.markdown("### ✍️ Describe the feature")
