@@ -560,6 +560,35 @@ def run_streamlit_app():
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
         }
         .muted { color: #475569; }
+        .info-trigger { position: relative; display: inline-block; margin-top: 4px; }
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #eef2ff;
+            color: #0f172a;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            cursor: help;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+        }
+        .info-popover {
+            display: none;
+            position: absolute;
+            top: 42px;
+            left: 0;
+            z-index: 20;
+            width: 320px;
+            background: #ffffff;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+        }
+        .info-trigger:hover .info-popover { display: block; }
+        .block-container { padding-top: 0.5rem; }
         .stButton>button {
             background: linear-gradient(120deg, #4338ca, #2563eb);
             color: #ffffff;
@@ -681,18 +710,26 @@ def run_streamlit_app():
                 unsafe_allow_html=True,
             )
 
-        st.markdown("### ℹ️ About This Tool")
         st.markdown(
             """
-            <div class="panel">
-            <strong>What it does:</strong><br>
-            This tool helps Business Development teams create realistic effort estimations for any complex features quickly.<br><br>
-            <strong>How it works:</strong><br>
-            • Tool breaks down the feature into modules, screens and one line requirements.<br>
-            • Excel does not contain static, hard-coded values.<br>
-            • All estimates are calculated dynamically using rules and complexity multipliers.<br>
-            • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
-            • The tool recalculates total effort instantly based on calibrated values.
+            <div style="display: flex; align-items: center; gap: 10px; margin: 6px 0 4px 0;">
+                <div class="info-trigger">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="info-popover">
+                        <div style="font-weight: 700; margin-bottom: 6px;">About this tool</div>
+                        <div class="muted" style="font-size: 14px;">
+                            <strong>What it does:</strong><br>
+                            This tool helps Business Development teams create realistic effort estimations for any complex features quickly.<br><br>
+                            <strong>How it works:</strong><br>
+                            • Tool breaks down the feature into modules, screens and one line requirements.<br>
+                            • Excel does not contain static, hard-coded values.<br>
+                            • All estimates are calculated dynamically using rules and complexity multipliers.<br>
+                            • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
+                            • The tool recalculates total effort instantly based on calibrated values.
+                        </div>
+                    </div>
+                </div>
+                <span class="muted" style="font-size: 14px;">Hover the info icon to learn more.</span>
             </div>
             """,
             unsafe_allow_html=True,
