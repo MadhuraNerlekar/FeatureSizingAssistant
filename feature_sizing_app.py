@@ -233,6 +233,7 @@ def write_module_sheet(
     existing_sheet_names: set,
     size_range_ref: str,
     hours_range_ref: str,
+    size_to_hours: Dict[str, float],
 ) -> Tuple[str, str]:
     sheet_name = sanitize_sheet_name(module.name, existing_sheet_names)
     ws = wb.create_sheet(title=sheet_name)
@@ -314,8 +315,12 @@ def write_module_sheet(
     total_cell_ref = f"B{summary_row + 2}"
     count_range_ref = f"$B${req_start}:$B${req_end}"
     ws[total_cell_ref] = (
-        f"=SUMPRODUCT(COUNTIF({count_range_ref},{size_range_ref}),{hours_range_ref})"
+        f"=SUMPRODUCT(COUNTIF({count_range_ref},{size_range_ref})*{hours_range_ref})"
     )
+
+    # Static backup value (for viewers that don't evaluate formulas, e.g., some web viewers)
+    ws[f"C{summary_row + 2}"].value = "Static total (Python)"
+    ws[f"D{summary_row + 2}"] = module.total_hours(size_to_hours)
 
     auto_fit_columns(ws)
     return sheet_name, total_cell_ref
@@ -323,7 +328,7 @@ def write_module_sheet(
 
 def build_resource_loading_sheet(
     wb: Workbook,
-    module_totals: List[Tuple[str, str, str]],
+    module_totals: List[Tuple[str, str, str, float]],
     size_to_hours: Dict[str, float],
     size_order: List[str],
 ):
@@ -351,11 +356,14 @@ def build_resource_loading_sheet(
     ws[f"C{alloc_header_row}"].value = "Ratio (editable)"
     ws[f"C{alloc_header_row}"].font = bold
 
-    total_refs = ",".join([f"'{sheet}'!{cell}" for sheet, _, cell in module_totals])
+    total_refs = ",".join([f"'{sheet}'!{cell}" for sheet, _, cell, _ in module_totals])
+    static_dev_total = sum(total for _, _, _, total in module_totals)
     dev_row = alloc_header_row + 1
     ws[f"A{dev_row}"] = "Dev Hours"
     ws[f"A{dev_row}"].font = bold
     ws[f"B{dev_row}"] = f"=SUM({total_refs})" if total_refs else 0
+    ws[f"D{dev_row}"] = static_dev_total
+    ws[f"C{dev_row}"] = "Static Dev Hours"
 
     allocations = [
         ("QA Hours", 0.4),
@@ -416,7 +424,7 @@ def build_workbook(
     size_range_ref = f"ResourceLoading!$A${size_start_row}:$A${size_end_row}"
     hours_range_ref = f"ResourceLoading!$B${size_start_row}:$B${size_end_row}"
 
-    module_totals: List[Tuple[str, str, str]] = []
+    module_totals: List[Tuple[str, str, str, float]] = []
     existing_sheet_names: set = set()
 
     for module in modules:
@@ -426,8 +434,9 @@ def build_workbook(
             existing_sheet_names=existing_sheet_names,
             size_range_ref=size_range_ref,
             hours_range_ref=hours_range_ref,
+            size_to_hours=size_to_hours,
         )
-        module_totals.append((sheet_name, module.name, total_cell))
+        module_totals.append((sheet_name, module.name, total_cell, module.total_hours(size_to_hours)))
 
     build_resource_loading_sheet(
         wb=wb,
@@ -528,11 +537,13 @@ def run_streamlit_app():
     # Sidebar for settings
     with st.sidebar:
         st.header("Settings")
-        api_key = st.text_input(
+        default_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")  # type: ignore[attr-defined]
+        api_key_input = st.text_input(
             "OpenAI API Key",
-            value=os.getenv("OPENAI_API_KEY", ""),
+            value="",
             type="password",
-            help="Leave empty to use OPENAI_API_KEY environment variable"
+            placeholder="Enter key or store as OPENAI_API_KEY secret",
+            help="Key not shown. Leave empty to use OPENAI_API_KEY from env/Secrets"
         )
     
     # Main content area
@@ -550,10 +561,11 @@ def run_streamlit_app():
                 with st.spinner("Generating analysis... This may take a moment."):
                     # Create a temporary directory for output
                     output_dir = Path("/tmp") if sys.platform != "win32" else Path.cwd()
+                    effective_api_key = api_key_input.strip() or default_api_key or None
                     output_path, preview = generate_analysis(
                         description,
                         output_dir,
-                        api_key=api_key.strip() or None,
+                        api_key=effective_api_key,
                     )
                 
                 st.success(f"✅ Analysis complete! Excel workbook saved.")
