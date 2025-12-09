@@ -580,11 +580,11 @@ def run_streamlit_app():
             top: 42px;
             left: 0;
             z-index: 20;
-            width: 320px;
+            width: 350px;
             background: #ffffff;
             border: 1px solid rgba(148, 163, 184, 0.35);
             border-radius: 12px;
-            padding: 12px;
+            padding: 14px;
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
         }
         .info-trigger:hover .info-popover { display: block; }
@@ -640,18 +640,52 @@ def run_streamlit_app():
         st.write("Calibrated map:")
         st.code({k: v for k, v in calibrated_hours.items()})
 
-    # Main content area
-    col_left, col_right = st.columns([2, 1], gap="medium")
-    with col_left:
-        st.markdown("### ✍️ Describe the feature")
-        description = st.text_area(
-            "Free-text Feature Description",
-            height=180,
-            placeholder="Paste your feature description here...",
-            label_visibility="collapsed",
+        # Info icon in sidebar
+        st.markdown("---")
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0 8px 0;">
+                <div class="info-trigger">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="info-popover">
+                        <div style="font-weight: 700; margin-bottom: 6px;">About this tool</div>
+                        <div class="muted" style="font-size: 14px;">
+                            <strong>What it does:</strong><br>
+                            This tool helps Business Development teams create realistic effort estimations for any complex features quickly.<br><br>
+                            <strong>How it works:</strong><br>
+                            • Tool breaks down the feature into modules, screens and one line requirements.<br>
+                            • Excel does not contain static, hard-coded values.<br>
+                            • All estimates are calculated dynamically using rules and complexity multipliers.<br>
+                            • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
+                            • The tool recalculates total effort instantly based on calibrated values.<br><br>
+                            <strong>🎯 How It Helps BD:</strong><br>
+                            • Create defensible project estimates<br>
+                            • Standardize effort calculations<br>
+                            • Simulate multiple scenarios before finalizing proposals<br>
+                            • Reduce manual Excel guesswork<br>
+                            • Quickly arrive at client-ready effort estimates
+                        </div>
+                    </div>
+                </div>
+                <span class="muted" style="font-size: 14px;">Hover for more info</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.caption("Include scope, integrations, constraints, and acceptance criteria.")
 
+    # Main content area - full width
+    st.markdown("### ✍️ Describe the feature")
+    description = st.text_area(
+        "Free-text Feature Description",
+        height=180,
+        placeholder="Paste your feature description here...",
+        label_visibility="collapsed",
+    )
+    st.caption("Include scope, integrations, constraints, and acceptance criteria.")
+
+    # Center-aligned button (shorter)
+    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+    with col_btn2:
         if st.button("🚀 Get Estimates", type="primary", use_container_width=True):
             if not description.strip():
                 st.error("Please provide a feature description.")
@@ -700,54 +734,6 @@ def run_streamlit_app():
                 except Exception as exc:
                     st.error(f"Failed to generate workbook: {exc}")
                     st.exception(exc)
-
-    with col_right:
-        activity_box = st.empty()
-        logs = st.session_state.get("activity_logs", [])
-        if logs:
-            activity_box.markdown(
-                "<div class='panel'>" + "".join(f"<div>• {msg}</div>" for msg in logs[-8:]) + "</div>",
-                unsafe_allow_html=True,
-            )
-
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center; gap: 10px; margin: 6px 0 4px 0;">
-                <div class="info-trigger">
-                    <div class="info-icon">ℹ️</div>
-                    <div class="info-popover">
-                        <div style="font-weight: 700; margin-bottom: 6px;">About this tool</div>
-                        <div class="muted" style="font-size: 14px;">
-                            <strong>What it does:</strong><br>
-                            This tool helps Business Development teams create realistic effort estimations for any complex features quickly.<br><br>
-                            <strong>How it works:</strong><br>
-                            • Tool breaks down the feature into modules, screens and one line requirements.<br>
-                            • Excel does not contain static, hard-coded values.<br>
-                            • All estimates are calculated dynamically using rules and complexity multipliers.<br>
-                            • Users can calibrate the hours assigned to S (Small), M (Medium), and L (Large).<br>
-                            • The tool recalculates total effort instantly based on calibrated values.
-                        </div>
-                    </div>
-                </div>
-                <span class="muted" style="font-size: 14px;">Hover the info icon to learn more.</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("### 🎯 How It Helps BD")
-        st.markdown(
-            """
-            <div class="panel">
-            • Create defensible project estimates<br>
-            • Standardize effort calculations<br>
-            • Simulate multiple scenarios before finalizing proposals<br>
-            • Reduce manual Excel guesswork<br>
-            • Quickly arrive at client-ready effort estimates
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
 
 # Streamlit app - runs when executed via: streamlit run feature_sizing_app.py
