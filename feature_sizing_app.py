@@ -658,6 +658,11 @@ def run_streamlit_app():
         body {
             background: radial-gradient(circle at 10% 20%, #eef2ff 0%, #f7f9ff 24%, #ffffff 55%);
         }
+        .block-container {
+            padding-top: 2rem;
+            max-width: 1600px;
+            width: 100% !important;
+        }
         .ai-card {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(56, 189, 248, 0.08));
             border: 1px solid rgba(99, 102, 241, 0.2);
@@ -712,7 +717,7 @@ def run_streamlit_app():
         }
         .stButton>button:hover { opacity: 0.95; }
         /* Make preview/output areas full width and tall */
-        .stTextArea, .stTextArea textarea {
+        .stTextArea, .stTextArea textarea, .stTextArea div[data-baseweb="base-input"] {
             width: 100% !important;
         }
         textarea[aria-label="Preview (for verification before opening Excel)"] {
