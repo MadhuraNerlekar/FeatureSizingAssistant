@@ -857,13 +857,6 @@ def run_streamlit_app():
                         data_bytes = f.read()
                         st.session_state.download_bytes = data_bytes
                         st.session_state.download_name = output_path.name
-                        st.download_button(
-                            label="📥 Download Excel Workbook",
-                            data=data_bytes,
-                            file_name=output_path.name,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True,
-                        )
 
                     st.session_state.preview_text = preview
 
@@ -878,6 +871,7 @@ def run_streamlit_app():
                 file_name=st.session_state.download_name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
+                key="download_persistent",
             )
 
     with col_preview:
