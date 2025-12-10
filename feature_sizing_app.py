@@ -663,6 +663,10 @@ def run_streamlit_app():
             max-width: 1600px;
             width: 100% !important;
         }
+        /* Wider main columns */
+        [data-testid="column"] {
+            width: 100% !important;
+        }
         .ai-card {
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(56, 189, 248, 0.08));
             border: 1px solid rgba(99, 102, 241, 0.2);
@@ -801,7 +805,15 @@ def run_streamlit_app():
         st.write("Calibrated map:")
         st.code({k: v for k, v in calibrated_hours.items()})
 
-    # Main content area - full width
+    # Session state for preview & download
+    if "preview_text" not in st.session_state:
+        st.session_state.preview_text = ""
+    if "download_bytes" not in st.session_state:
+        st.session_state.download_bytes = None
+    if "download_name" not in st.session_state:
+        st.session_state.download_name = "feature_sizing.xlsx"
+
+    # Main content area - full width, split into action + preview
     st.markdown("### ✍️ Describe the feature")
     description = st.text_area(
         "Free-text Feature Description",
@@ -811,9 +823,9 @@ def run_streamlit_app():
     )
     st.caption("Include scope, integrations, constraints, and acceptance criteria.")
 
-    # Left-aligned button (shorter)
-    col_btn_left, col_btn_right = st.columns([1, 5])
-    with col_btn_left:
+    col_actions, col_preview = st.columns([1, 3], gap="large")
+
+    with col_actions:
         if st.button("🚀 Get Estimates", type="primary", use_container_width=True):
             if not description.strip():
                 st.error("Please provide a feature description.")
@@ -842,26 +854,41 @@ def run_streamlit_app():
                     st.success("✅ Analysis complete! Excel workbook saved.")
 
                     with open(output_path, "rb") as f:
+                        data_bytes = f.read()
+                        st.session_state.download_bytes = data_bytes
+                        st.session_state.download_name = output_path.name
                         st.download_button(
                             label="📥 Download Excel Workbook",
-                            data=f.read(),
+                            data=data_bytes,
                             file_name=output_path.name,
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True,
                         )
 
-                    st.subheader("Textual Preview")
-                    st.text_area(
-                        "Preview (for verification before opening Excel)",
-                        value=preview,
-                        height=720,
-                        disabled=True,
-                        label_visibility="collapsed",
-                    )
+                    st.session_state.preview_text = preview
 
                 except Exception as exc:
                     st.error(f"Failed to generate workbook: {exc}")
                     st.exception(exc)
+
+        if st.session_state.download_bytes:
+            st.download_button(
+                label="📥 Download Excel Workbook",
+                data=st.session_state.download_bytes,
+                file_name=st.session_state.download_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+            )
+
+    with col_preview:
+        st.subheader("Textual Preview")
+        st.text_area(
+            "Preview (for verification before opening Excel)",
+            value=st.session_state.preview_text,
+            height=720,
+            disabled=True,
+            label_visibility="collapsed",
+        )
 
 
 # Streamlit app - runs when executed via: streamlit run feature_sizing_app.py
