@@ -133,32 +133,115 @@ def parse_llm_response(payload: str) -> Tuple[List[ModuleSpec], List[str], List[
 def request_plan_from_llm(description: str, api_key: str | None = None):
     client = get_openai_client(api_key)
     system_prompt = (
-        "You are a senior presales analyst. Produce a feature sizing plan as STRICT JSON "
-        "using this schema:\n"
+        "You are a senior Business Analyst and Presales Solution Consultant.\n\n"
+        "Your task: Given a feature or project description, produce an exhaustive feature sizing plan as STRICT JSON ONLY, with NO markdown, NO comments, and NO explanations.\n\n"
+        "The JSON MUST conform to this schema exactly:\n\n"
         "{\n"
-        '  "size_hours": {"XS": 2, "S": 4, "M": 8, "L": 16, "XL": 24},\n'
+        '  "size_hours": {\n'
+        '    "XS": 2,\n'
+        '    "S": 4,\n'
+        '    "M": 8,\n'
+        '    "L": 16,\n'
+        '    "XL": 24\n'
+        "  },\n"
         '  "modules": [\n'
         "    {\n"
         '      "name": "string",\n'
-        '      "description": "string",\n'
-        '      "summary": "string",\n'
+        '      "description": "1-2 sentence overview of this module",\n'
+        '      "summary": "short business value summary in business language",\n'
         '      "screen_count": 4,\n'
         '      "screens": [\n'
-        '         {"title": "Screen title", "description": "purpose"}\n'
+        "        {\n"
+        '          "title": "Screen title",\n'
+        '          "description": "short purpose of this screen"\n'
+        "        }\n"
         "      ],\n"
         '      "requirements": [\n'
-        '         {"text": "one-line, very granular", "size": "M", "notes": ""}\n'
+        "        {\n"
+        '          "text": "one-line, very granular requirement",\n'
+        '          "size": "XS | S | M | L | XL",\n'
+        '          "notes": "short note or empty string"\n'
+        "        }\n"
         "      ]\n"
         "    }\n"
         "  ],\n"
-        '  "risks": ["risk 1", "..."],\n'
-        '  "questions": ["question 1", "..."]\n'
-        "}\n"
-        "Rules:\n"
-        "- Always include XS/S/M/L/XL keys in size_hours (uppercase) and map to estimated dev hours.\n"
-        "- Provide 7-12 granular requirements per module, each with size XS/S/M/L/XL only.\n"
-        "- Each module must list every planned screen with title + short purpose sentence.\n"
-        "- Keep prose concise; no markdown or commentary outside the JSON."
+        '  "risks": ["short risk statement"],\n'
+        '  "questions": ["short clarification question"]\n'
+        "}\n\n"
+        "Global output rules:\n"
+        "- Output MUST be valid JSON. Do NOT wrap it in backticks. Do NOT add any text before or after the JSON.\n"
+        '- Do NOT change field names, do NOT add extra top-level fields, and do NOT change the "size_hours" keys or values.\n\n'
+        "Sizing rules:\n"
+        '- Always include ALL XS, S, M, L, XL keys (uppercase) in "size_hours" with the hours exactly as shown.\n'
+        '- Each requirement\\'s "size" MUST be one of XS, S, M, L, XL only.\n\n'
+        "Holistic solution coverage (think end-to-end):\n"
+        "- Think like a senior BA: cover the whole solution, not just the obvious UI.\n"
+        "- Identify all major modules needed to deliver the end-to-end product, including where relevant:\n"
+        "  - Core functional modules for the main user journeys\n"
+        "  - Supporting / enabling modules (authentication, user management, roles/permissions)\n"
+        "  - Administration / configuration / settings\n"
+        "  - Reporting, dashboards, analytics\n"
+        "  - Integrations (APIs, webhooks, 3rd party services)\n"
+        "  - Security, audit, logging, compliance-related functions\n"
+        "  - Performance, scalability, reliability and operational aspects where they require explicit features\n"
+        "- Do NOT under-estimate the number of modules: if the scope suggests more modules, add them. Err on the side of including additional modules instead of merging them.\n\n"
+        "Modules rules:\n"
+        "- Create as many modules as are realistically needed for a complete solution. Do NOT optimise for having fewer modules.\n"
+        "- Each module must be coherent (centered around a functional area or actor) and named clearly in business-friendly language.\n"
+        '- "description" should describe what the module does functionally.\n'
+        '- "summary" should express why this module matters in business terms (value, outcome, stakeholder).\n\n'
+        "Screens rules:\n"
+        '- "screen_count" MUST equal screens.length.\n'
+        "- Only include screens that are relevant to this module.\n"
+        "- Each screen must have:\n"
+        '  - "title": short, human-readable name.\n'
+        '  - "description": one short sentence explaining business purpose or user goal.\n'
+        "- Include screens for:\n"
+        "  - Create/edit/detail views\n"
+        "  - Search/listing views\n"
+        "  - Dashboards\n"
+        "  - Admin/configuration views\n"
+        "  - Error / exception flows only if they require dedicated screens.\n\n"
+        "Requirements rules (go very granular):\n"
+        "- Think at three layers for each module:\n"
+        "  1) User experience & journeys (what each actor does, step by step)\n"
+        "  2) Business rules, validations, and workflows\n"
+        "  3) System capabilities, data handling, and integrations\n"
+        "- For each module, generate MANY granular requirements. Do NOT limit yourself to 7-12 items; break things down as far as is reasonable.\n"
+        "  - Each requirement should describe ONE atomic behaviour, rule, or system capability.\n"
+        '  - Avoid combining multiple behaviours in a single requirement (avoid "and" chains).\n'
+        "- Cover:\n"
+        "  - Happy path flows\n"
+        "  - Alternative paths\n"
+        "  - Validation rules and error handling\n"
+        "  - Edge cases and exceptional scenarios\n"
+        "  - Permissions / role-based access control\n"
+        "  - Data capture, updates, and state changes\n"
+        "  - Notifications (emails, in-app, SMS, etc. if applicable)\n"
+        "  - Integrations and data sync behaviour\n"
+        '- "text" should be concise but specific and implementation-oriented.\n'
+        '- "notes" may be "" if nothing special is needed, or may include assumptions, dependencies, or BA notes.\n\n'
+        "BA mindset:\n"
+        "- Explicitly think about different actors (end users, admins, support, external systems) and reflect them in modules, screens, and requirements.\n"
+        "- Surface implicit business rules (e.g., approvals, thresholds, SLAs, audit trails) as separate requirements.\n"
+        '- Where business rules or data definitions are unclear, keep going with reasonable assumptions and capture uncertainty in "risks" and "questions" instead of stopping.\n\n'
+        "Risks and questions:\n"
+        '- "risks": include 5-10 concise items focusing on:\n'
+        "  - Ambiguities in requirements\n"
+        "  - Technical uncertainties\n"
+        "  - Integration and dependency risks\n"
+        "  - Scope creep or complexity risks\n"
+        '- "questions": include 7-15 items focusing on:\n'
+        "  - Business rules and edge cases\n"
+        "  - Priorities and MVP vs. later phases\n"
+        "  - Data model and reporting needs\n"
+        "  - Non-functional requirements (performance, availability, security, compliance)\n"
+        "- Phrase both risks and questions as if you are preparing for a client / product owner workshop.\n\n"
+        "If the input is vague:\n"
+        "- Make reasonable, realistic assumptions about the domain, actors, and usage patterns.\n"
+        "- Still produce a full, holistic plan.\n"
+        '- Capture uncertainties or alternate options in "risks" and "questions".\n'
+        '- Do NOT say that you need more information in the JSON.'
     )
     user_prompt = (
         "Feature description:\n"
