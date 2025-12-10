@@ -521,7 +521,16 @@ def build_workbook(
     wb = Workbook()
     default_sheet = wb.active
     wb.remove(default_sheet)
-    wb.calculation_properties.fullCalcOnLoad = True
+    # Ensure formulas refresh on open; tolerate older openpyxl versions
+    try:
+        wb.calculation_properties.fullCalcOnLoad = True  # type: ignore[attr-defined]
+    except Exception:
+        try:
+            from openpyxl.workbook.properties import CalcProperties
+
+            wb.calculation_properties = CalcProperties(fullCalcOnLoad=True)  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     size_order = ordered_size_keys(size_to_hours)
     size_start_row = 3
@@ -702,6 +711,10 @@ def run_streamlit_app():
             font-weight: 700;
         }
         .stButton>button:hover { opacity: 0.95; }
+        /* Make preview/output areas full width and tall */
+        .stTextArea, .stTextArea textarea {
+            width: 100% !important;
+        }
         textarea[aria-label="Preview (for verification before opening Excel)"] {
             min-height: 70vh !important;
         }
