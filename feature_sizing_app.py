@@ -192,7 +192,7 @@ Holistic solution coverage (think end-to-end):
 - Do NOT under-estimate the number of modules: if the scope suggests more modules, add them. Err on the side of including additional modules instead of merging them.
 
 Modules rules:
-- Create as many modules as are realistically needed for a complete solution. Do NOT optimise for having fewer modules.
+- Create as many modules as are realistically needed for a complete solution. Do NOT optimise for having fewer modules; prefer decomposing into smaller, actor/stage-focused modules. As a default bias, produce 8-15 modules for a typical business application (more if scope warrants).
 - Each module must be coherent (centered around a functional area or actor) and named clearly in business-friendly language.
 - "description" should describe what the module does functionally.
 - "summary" should express why this module matters in business terms (value, outcome, stakeholder).
@@ -215,7 +215,7 @@ Requirements rules (go very granular):
   1) User experience & journeys (what each actor does, step by step)
   2) Business rules, validations, and workflows
   3) System capabilities, data handling, and integrations
-- For each module, generate MANY granular requirements. Do NOT limit yourself to 7-12 items; break things down as far as is reasonable.
+- For each module, generate MANY granular requirements. Do NOT limit yourself to 7-12 items; break things down as far as is reasonable. Default bias: 15-25 requirements per module when scope allows.
   - Each requirement should describe ONE atomic behaviour, rule, or system capability.
   - Avoid combining multiple behaviours in a single requirement (avoid "and" chains).
 - Cover:
@@ -485,9 +485,18 @@ def build_resource_loading_sheet(
     ws[f"A{util_header_row + 1}"].value = "Role"
     ws[f"B{util_header_row + 1}"].value = "Hours"
     ws[f"C{util_header_row + 1}"].value = "Resource Days"
+    ws[f"E{util_header_row + 1}"].value = "Static Resource Days"
     for col in "ABC":
         ws[f"{col}{util_header_row + 1}"].font = bold
+    ws[f"E{util_header_row + 1}"].font = bold
 
+    static_hours: Dict[str, float] = {
+        "Dev": static_dev_total,
+        "QA": static_dev_total * allocations[0][1],
+        "PM": static_dev_total * allocations[1][1],
+        "Architect": static_dev_total * allocations[2][1],
+        "Buffer": static_dev_total * allocations[3][1],
+    }
     util_rows = [
         ("Dev", f"$B${dev_row}"),
         ("QA", f"$B${allocation_rows['QA Hours']}"),
@@ -499,6 +508,7 @@ def build_resource_loading_sheet(
         ws[f"A{idx}"] = role
         ws[f"B{idx}"] = f"={hours_cell}"
         ws[f"C{idx}"] = f"={hours_cell}/$B${hours_per_day_row}"
+        ws[f"E{idx}"] = round(static_hours.get(role, 0) / ws[f"B{hours_per_day_row}"].value, 2)
 
     auto_fit_columns(ws, min_width=14)
 
@@ -511,6 +521,7 @@ def build_workbook(
     wb = Workbook()
     default_sheet = wb.active
     wb.remove(default_sheet)
+    wb.calculation_properties.fullCalcOnLoad = True
 
     size_order = ordered_size_keys(size_to_hours)
     size_start_row = 3
@@ -691,6 +702,9 @@ def run_streamlit_app():
             font-weight: 700;
         }
         .stButton>button:hover { opacity: 0.95; }
+        textarea[aria-label="Preview (for verification before opening Excel)"] {
+            min-height: 70vh !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -747,19 +761,23 @@ def run_streamlit_app():
         st.header("Control Center")
         st.subheader("Effort Calibration")
         st.caption("Adjust sizing hours to instantly recalc effort")
-        col_s, col_m, col_l = st.columns(3)
+        col_xs, col_s, col_m, col_l, col_xl = st.columns(5)
+        with col_xs:
+            hours_xs = st.number_input("XS hours", min_value=0.5, value=float(DEFAULT_SIZE_TO_HOURS.get("XS", 2)), step=0.25)
         with col_s:
             hours_s = st.number_input("S hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)), step=0.5)
         with col_m:
             hours_m = st.number_input("M hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)), step=0.5)
         with col_l:
             hours_l = st.number_input("L hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)), step=0.5)
+        with col_xl:
+            hours_xl = st.number_input("XL hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("XL", 24)), step=0.5)
         calibrated_hours = {
-            "XS": DEFAULT_SIZE_TO_HOURS.get("XS", 2),
+            "XS": hours_xs,
             "S": hours_s,
             "M": hours_m,
             "L": hours_l,
-            "XL": DEFAULT_SIZE_TO_HOURS.get("XL", 24),
+            "XL": hours_xl,
         }
 
         st.write("Calibrated map:")
@@ -818,7 +836,7 @@ def run_streamlit_app():
                     st.text_area(
                         "Preview (for verification before opening Excel)",
                         value=preview,
-                        height=360,
+                        height=720,
                         disabled=True,
                         label_visibility="collapsed",
                     )
