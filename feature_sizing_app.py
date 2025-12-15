@@ -812,6 +812,8 @@ def run_streamlit_app():
         st.session_state.download_bytes = None
     if "download_name" not in st.session_state:
         st.session_state.download_name = "feature_sizing.xlsx"
+    if "show_preview" not in st.session_state:
+        st.session_state.show_preview = False
 
     # Main content area - full width, split into action + preview
     st.markdown("### ✍️ Describe the feature")
@@ -859,6 +861,7 @@ def run_streamlit_app():
                         st.session_state.download_name = output_path.name
 
                     st.session_state.preview_text = preview
+                    st.session_state.show_preview = True
 
                 except Exception as exc:
                     st.error(f"Failed to generate workbook: {exc}")
@@ -875,14 +878,15 @@ def run_streamlit_app():
             )
 
     with col_preview:
-        st.subheader("Textual Preview")
-        st.text_area(
-            "Preview (for verification before opening Excel)",
-            value=st.session_state.preview_text,
-            height=720,
-            disabled=True,
-            label_visibility="collapsed",
-        )
+        if st.session_state.show_preview and st.session_state.preview_text:
+            st.subheader("Textual Preview")
+            st.text_area(
+                "Preview (for verification before opening Excel)",
+                value=st.session_state.preview_text,
+                height=720,
+                disabled=True,
+                label_visibility="collapsed",
+            )
 
 
 # Streamlit app - runs when executed via: streamlit run feature_sizing_app.py
