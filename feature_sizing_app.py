@@ -14,7 +14,7 @@ from typing import Dict, List, Tuple
 
 from openai import OpenAI
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font
+from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
 
 
@@ -428,6 +428,12 @@ def build_resource_loading_sheet(
 ):
     ws = wb.create_sheet(title="ResourceLoading", index=0)
     bold = Font(bold=True)
+    thin = Side(border_style="thin", color="DDDDDD")
+
+    def apply_border(range_ref: str):
+        for row in ws[range_ref]:
+            for cell in row:
+                cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
     ws["A1"].value = "T-shirt Sizing to Hours"
     ws["A1"].font = bold
@@ -451,13 +457,10 @@ def build_resource_loading_sheet(
     ws[f"C{alloc_header_row}"].font = bold
 
     total_refs = ",".join([f"'{sheet}'!{cell}" for sheet, _, cell, _ in module_totals])
-    static_dev_total = sum(total for _, _, _, total in module_totals)
     dev_row = alloc_header_row + 1
     ws[f"A{dev_row}"] = "Dev Hours"
     ws[f"A{dev_row}"].font = bold
     ws[f"B{dev_row}"] = f"=SUM({total_refs})" if total_refs else 0
-    ws[f"D{dev_row}"] = static_dev_total
-    ws[f"C{dev_row}"] = "Static Dev Hours"
 
     allocations = [
         ("QA Hours", 0.4),
@@ -485,18 +488,8 @@ def build_resource_loading_sheet(
     ws[f"A{util_header_row + 1}"].value = "Role"
     ws[f"B{util_header_row + 1}"].value = "Hours"
     ws[f"C{util_header_row + 1}"].value = "Resource Days"
-    ws[f"E{util_header_row + 1}"].value = "Static Resource Days"
     for col in "ABC":
         ws[f"{col}{util_header_row + 1}"].font = bold
-    ws[f"E{util_header_row + 1}"].font = bold
-
-    static_hours: Dict[str, float] = {
-        "Dev": static_dev_total,
-        "QA": static_dev_total * allocations[0][1],
-        "PM": static_dev_total * allocations[1][1],
-        "Architect": static_dev_total * allocations[2][1],
-        "Buffer": static_dev_total * allocations[3][1],
-    }
     util_rows = [
         ("Dev", f"$B${dev_row}"),
         ("QA", f"$B${allocation_rows['QA Hours']}"),
@@ -508,7 +501,10 @@ def build_resource_loading_sheet(
         ws[f"A{idx}"] = role
         ws[f"B{idx}"] = f"={hours_cell}"
         ws[f"C{idx}"] = f"={hours_cell}/$B${hours_per_day_row}"
-        ws[f"E{idx}"] = round(static_hours.get(role, 0) / ws[f"B{hours_per_day_row}"].value, 2)
+
+    apply_border(f"A2:B{size_end_row}")
+    apply_border(f"A{alloc_header_row}:C{alloc_header_row + len(allocations) + 1}")
+    apply_border(f"A{util_header_row}:C{util_header_row + len(util_rows) + 1}")
 
     auto_fit_columns(ws, min_width=14)
 
@@ -785,15 +781,50 @@ def run_streamlit_app():
         st.caption("Adjust sizing hours to instantly recalc effort")
         col_xs, col_s, col_m, col_l, col_xl = st.columns(5)
         with col_xs:
-            hours_xs = st.number_input("XS hours", min_value=0.5, value=float(DEFAULT_SIZE_TO_HOURS.get("XS", 2)), step=0.25)
+            hours_xs = st.number_input(
+                "XS hours",
+                min_value=0.5,
+                value=float(DEFAULT_SIZE_TO_HOURS.get("XS", 2)),
+                step=0.25,
+                key="hours_xs",
+                disabled=False,
+            )
         with col_s:
-            hours_s = st.number_input("S hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)), step=0.5)
+            hours_s = st.number_input(
+                "S hours",
+                min_value=1.0,
+                value=float(DEFAULT_SIZE_TO_HOURS.get("S", 4)),
+                step=0.5,
+                key="hours_s",
+                disabled=False,
+            )
         with col_m:
-            hours_m = st.number_input("M hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)), step=0.5)
+            hours_m = st.number_input(
+                "M hours",
+                min_value=1.0,
+                value=float(DEFAULT_SIZE_TO_HOURS.get("M", 8)),
+                step=0.5,
+                key="hours_m",
+                disabled=False,
+            )
         with col_l:
-            hours_l = st.number_input("L hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)), step=0.5)
+            hours_l = st.number_input(
+                "L hours",
+                min_value=1.0,
+                value=float(DEFAULT_SIZE_TO_HOURS.get("L", 16)),
+                step=0.5,
+                key="hours_l",
+                disabled=False,
+            )
         with col_xl:
-            hours_xl = st.number_input("XL hours", min_value=1.0, value=float(DEFAULT_SIZE_TO_HOURS.get("XL", 24)), step=0.5)
+            hours_xl = st.number_input(
+                "XL hours",
+                min_value=1.0,
+                value=float(DEFAULT_SIZE_TO_HOURS.get("XL", 24)),
+                step=0.5,
+                key="hours_xl",
+                disabled=False,
+            )
         calibrated_hours = {
             "XS": hours_xs,
             "S": hours_s,
